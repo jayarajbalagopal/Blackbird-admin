@@ -70,7 +70,7 @@ sap.ui.define([
 			this.getView().setModel(oMessages, "messages");
 			this.getView().setModel(paging, "pageData");
 			initPage = true;
-			this._loadChannelMessages("", "");
+			
 		},
 		_onObjectMatched: function (oEvent) {
             var obj = oEvent.getParameter("arguments").details;
@@ -78,64 +78,7 @@ sap.ui.define([
             obj=obj.replace("\"","");
             this.getView().byId("text").setText(obj);
         },
-		_loadChannelMessages: function(latest, oldest) {
-			var oView = this.getView();
-			oView.setBusy(true);
-
-			var self = this;
-
-			var channel = "C07CLK14P";
-			var token = "xoxp-7428683734-122297743719-183589301568-5163645d2f3b35d7ac1478858693b450";
-			var pageLimit = this.getView().getModel("pageData").getProperty("/pageLimit");
-			var latestTimestamp = latest;
-			var oldestTimestamp = oldest;
-			$.ajax({
-					type: 'GET',
-					url: "/slack/channels.history?channel=" + channel + "&token=" + token + "&latest=" + latestTimestamp +
-						"&oldest=" + oldestTimestamp + "&count=" + pageLimit,
-					async: false
-				}).done(function(results) {
-					self.getView().getModel("messages").setProperty("/data", results.messages);
-					self.getView().getModel("pageData").setProperty("/latest", results.messages[results.messages.length - 1].ts);
-					self.getView().getModel("pageData").setProperty("/oldest", results.messages[0].ts);
-					if (initPage === true) {
-						self.getView().getModel("pageData").setProperty("/oldestInit", results.messages[0].ts);
-						self.getView().getModel("pageData").setProperty("/latestInit", results.messages[results.messages.length - 1].ts);
-						initPage = false;
-					}
-
-					for (var i = 0; i < results.messages.length; i++) {
-						if (results.messages[i].user !== null) {
-							$.ajax({
-								type: 'GET',
-								url: "/slack/users.info?user=" + results.messages[i].user + "&token=" + token,
-								async: false
-							}).done(function(userResults) {
-								var message = self.getView().getModel("messages").getProperty("/data");
-
-								message[i].userDetails = userResults.user;
-								self.getView().getModel("messages").setProperty("/data", message);
-
-							});
-
-						}
-
-					}
-					oView.setBusy(false);
-				})
-				.fail(function(err) {
-					oView.setBusy(false);
-					if (err !== undefined) {
-						var oErrorResponse = $.parseJSON(err.responseText);
-						sap.m.MessageToast.show(oErrorResponse.message, {
-							duration: 6000
-						});
-					} else {
-						sap.m.MessageToast.show("Unknown error!");
-					}
-				});
-
-		},
+		
 		onLogClick: function(oEvent) {
             
 			var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
@@ -162,88 +105,6 @@ sap.ui.define([
 
 			sideNavigation.setMode(sap.m.SplitAppMode.HideMode);
 
-		},
-
-		onPressNavToDetail: function(oEvent) {
-			var oBundle = this.getView().getModel("i18n").getResourceBundle();
-			var sRecipient = this.getView().getModel().getProperty("/surl");
-			var sMsg = oBundle.getText("helloMsg", [sRecipient]);
-			if (sMsg.includes("/slack.com/api/")) {
-				var url = sMsg.split('?');
-				var vals = url[1].split('&');
-				var channel;
-				var token;
-				for (var i = 0; i < vals.length; i++) {
-					var temp = vals[i].split('=');
-					if (temp[0] === "channel") {
-						channel = temp[1];
-					}
-					if (temp[0] === "token") {
-						token = temp[1];
-					}
-				//	MessageToast.show(channel + " " + token);
-				}
-				this.getSplitAppObj().to(this.createId("detail21"));
-				var oMessages = new JSONModel();
-				this.getView().setModel(oMessages, "messages");
-				var oView = this.getView();
-				oView.setBusy(true);
-
-				var self = this;
-					var pageLimit = this.getView().getModel("pageData").getProperty("/pageLimit");
-			var latestTimestamp = latest;
-			var oldestTimestamp = oldest;
-				$.ajax({
-						type: 'GET',
-						url: "/slack/channels.history?channel=" + channel + "&token=" + token + "&latest=" + latestTimestamp +
-						"&oldest=" + oldestTimestamp + "&count=" + pageLimit,
-						async: false
-					}).done(function(results) {
-						self.getView().getModel("messages").setProperty("/data", results.messages);
-						self.getView().getModel("pageData").setProperty("/latest", results.messages[results.messages.length - 1].ts);
-					self.getView().getModel("pageData").setProperty("/oldest", results.messages[0].ts);
-					if (initPage === true) {
-						self.getView().getModel("pageData").setProperty("/oldestInit", results.messages[0].ts);
-						self.getView().getModel("pageData").setProperty("/latestInit", results.messages[results.messages.length - 1].ts);
-						initPage = false;
-					}
-
-					for (var i = 0; i < results.messages.length; i++) {
-						if (results.messages[i].user !== null) {
-							$.ajax({
-								type: 'GET',
-								url: "/slack/users.info?user=" + results.messages[i].user + "&token=" + token,
-								async: false
-							}).done(function(userResults) {
-								var message = self.getView().getModel("messages").getProperty("/data");
-								if (!userResults.user.profile.phone) {
-									userResults.user.profile.phone = "Nil";
-								}
-								message[i].userDetails = userResults.user;
-								self.getView().getModel("messages").setProperty("/data", message);
-
-							});
-
-						}
-
-					}
-						oView.setBusy(false);
-					})
-					.fail(function(err) {
-						oView.setBusy(false);
-						if (err !== undefined) {
-							var oErrorResponse = $.parseJSON(err.responseText);
-							sap.m.MessageToast.show(oErrorResponse.message, {
-								duration: 6000
-							});
-						} else {
-							sap.m.MessageToast.show("Unknown error!");
-						}
-					});
-
-			} else MessageToast.show("Invalid Url");
-			// show message
-			//	MessageToast.show(sMsg);
 		},
 
 		onPressDetailBack: function() {
